@@ -3,9 +3,12 @@ module Data.Suffix where
 import Control.Applicative
 import qualified Data.ByteString as BS
 import qualified Data.Vector as V
+import qualified Data.Vector.Mutable as MV
 import qualified Data.Map.Strict as Map
 import qualified Data.Sequence as Seq
 import Data.Foldable (toList)
+
+import Debug.Trace
 
 data SuffixArray
 
@@ -42,15 +45,33 @@ lmsSubs t = V.zipWith3 go enums (V.init t') (V.tail t')
       enums = V.fromList [0..V.length t]
 
 -- |
-induceSort :: V.Vector Char -> V.Vector IsLMS -> (V.Vector Int, [Int])
-induceSort chars lms = (toVInts bkts, scanl (+) 0 $ Seq.length <$> Map.elems bkts)
+induceSort :: V.Vector Char -> V.Vector IsLMS -> (V.Vector Int, Marks)
+induceSort chars lms = (toVInts bkts, zip (Map.keys bkts) ints)
     where
       go bkt (c, LMS idx) = addToBucket c idx bkt
       go bkt (c, NotLMS ) = addToBucket c (negate 1) bkt
       toVInts = V.fromList . concat . Map.elems . fmap toList
       bkts = V.foldl go Map.empty $ V.zip chars lms
+      ints = init $ scanl (+) 0 $ Seq.length <$> Map.elems bkts
+
+step2 :: V.Vector Char -> V.Vector Typ -> (V.Vector Int, Marks) -> (V.Vector Int, Marks)
+step2 chars typ (vec', marks') = go 0 marks' vec'
+    where
+      updMark c (h@(c',n):xs) | c == c'   = (c,n+1):xs
+                              | otherwise = h:updMark c xs
+      go n marks vec  | n == V.length chars - 1 = (vec, marks)
+                      | otherwise = traceShow (n,vec) $
+          case typ V.! idx of
+             STyp -> go (n + 1) marks vec
+             LTyp -> go (n + 1) (updMark c marks)
+                                (V.modify (\v -> MV.write v (n + 1) idx) vec)
+        where idx = (vec V.! n) - 1
+              c   = chars V.! idx
+
 
 type Buckets = Map.Map Char (Seq.Seq Int)
+
+type Marks = [(Char, Int)]
 
 addToBucket :: Char -> Int -> Buckets -> Buckets
 addToBucket c (- 1) bkt = case Map.lookup c bkt of

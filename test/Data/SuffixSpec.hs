@@ -23,6 +23,7 @@ spec = describe "Data.Suffix" $ do
     classifyLSSpec
     lmsSubsSpec
     induceSortSpec
+    step2Spec
 
 
 classifyLSSpec :: Spec
@@ -47,8 +48,15 @@ lmsSubsSpec = describe "lmsSubs" $ do
 induceSortSpec :: Spec
 induceSortSpec = describe "induceSort" $ do
     it "should the paper's example correct" $ do
-        let ans = [16, -1, -1, -1, -1, -1, 10, 06, 02, -1, -1, -1, -1, -1, -1, -1, -1]
+        let ans = [16,-1,-1,-1,-1,-1,02,06,10,-1,-1,-1,-1,-1,-1,-1,-1]
         let val = induceSort eg (lmsSubs $ classifyLS eg)
         fst val `shouldBe` ans
+        snd val `shouldBe` [('\NUL',0),('i',1),('m',9),('p',11),('s',13)]
 
+step2Spec :: Spec
+step2Spec = describe "step2" $ do
+    it "should the paper's example correct" $ do
+        let vmark = induceSort eg (lmsSubs $ classifyLS eg)
+        let val = step2 eg (classifyLS eg) vmark
+        fst val `shouldBe` V.empty
 
